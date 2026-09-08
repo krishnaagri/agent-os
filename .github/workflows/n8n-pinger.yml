@@ -1,0 +1,72 @@
+# ============================================================
+# FK AGENT OS — Schedule Pinger (free GitHub Actions cron)
+# Render free tier 15 min idle pe sleep ho jaata hai, isliye
+# n8n ka internal schedule use NAHI hota. Is file ke cron jobs
+# n8n ko wake karte hain (webhook hit) aur workflow trigger karte hain.
+#
+#   Daily digest : 09:30 IST Mon-Fri  (= 04:00 UTC)
+#   Weekly report: Fri 17:00 IST      (= 11:30 UTC)
+#
+# Public repo = GitHub Actions unlimited free.
+# ============================================================
+name: n8n Schedule Pinger
+
+on:
+  schedule:
+    - cron: "0 4 * * 1-5"   # 09:30 IST Mon-Fri → daily finance digest
+    - cron: "30 11 * * 5"   # 16:30 IST Fri     → weekly report
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "kaunsa trigger chale (daily | weekly)"
+        required: true
+        default: "daily"
+
+jobs:
+  daily:
+    if: github.event.schedule == '0 4 * * 1-5'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake n8n and trigger WF-01 (daily digest)
+        run: |
+          curl -sfS --retry 2 --retry-delay 30 --max-time 240 -X POST \
+            -H 'Content-Type: application/json' -d '{}' \
+            "https://fk-agent-os.onrender.com/webhook/fk-daily-9f4e2a" \
+          || echo "⚠️ trigger failed — check Render service logs"
+
+  weekly:
+    if: github.event.schedule == '30 11 * * 5'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake n8n and trigger WF-02 (weekly report)
+        run: |
+          curl -sfS --retry 2 --retry-delay 30 --max-time 240 -X POST \
+            -H 'Content-Type: application/json' -d '{}' \
+            "https://fk-agent-os.onrender.com/webhook/fk-weekly-7b3d1c" \
+          || echo "⚠️ trigger failed — check Render service logs"
+
+  manual-daily:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'daily'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Manual trigger WF-01
+        run: |
+          curl -sfS --retry 2 --retry-delay 30 --max-time 240 -X POST \
+            -H 'Content-Type: application/json' -d '{}' \
+            "https://fk-agent-os.onrender.com/webhook/fk-daily-9f4e2a" \
+          || echo "⚠️ trigger failed"
+
+  manual-weekly:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'weekly'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Manual trigger WF-02
+        run: |
+          curl -sfS --retry 2 --retry-delay 30 --max-time 240 -X POST \
+            -H 'Content-Type: application/json' -d '{}' \
+            "https://fk-agent-os.onrender.com/webhook/fk-weekly-7b3d1c" \
+          || echo "⚠️ trigger failed"

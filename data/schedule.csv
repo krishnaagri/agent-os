@@ -1,0 +1,17 @@
+name,agent,what,frequency,time
+Daily Digest,FINANCE + ORCHESTRATOR,"GMV + aapka % + exceptions + today's priorities",daily,07:00
+Backup,SYSTEM,"tar of data/ + .env → /backup → Drive push",daily,02:00
+Guardian Audit,GUARDIAN,"API access log, 2FA, backup integrity, anomaly scan",daily,03:00
+Settlement Check,B5 SETTLEMENT,"new settlements → reconciliation",daily,07:30
+Intel Scan,MARKET INTEL,"policy changes, trends, competitor moves",daily,08:00
+Performance KPIs,B6 PERFORMANCE,"cancellation/RTD/return/rating vs safe zones",daily,08:30
+Stock Sync,B2 INVENTORY,"stock check + low-stock pause + reorder alerts",every 30 min,
+Order Feed,B3 ORDERS,"order accept + RTD SLA countdown",real-time,
+Ads Review,B7 ADS,"ROAS check, pauses, budget shifts",daily,22:00
+Master Review,MASTER,"daily review → tomorrow priorities",daily,23:00
+Weekly Report,ALL,"per-seller reports + Master Report",friday,18:00
+Restore Test,BACKUP,"weekly restore verification",sunday,03:30
+Monthly P&L,FINANCE,"full month commission − costs",monthly,01:00
+CRM Reports,SELLER CRM,"monthly professional PDF per seller",monthly,01:00
+Key Rotation,GUARDIAN,"API keys rotation (sellers se naye)",quarterly,
+Kill Switch Test,GUARDIAN,"monthly kill switch drill",monthly,

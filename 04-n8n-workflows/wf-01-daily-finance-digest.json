@@ -1,0 +1,75 @@
+{
+  "name": "FK-OS: WF-01 Daily Finance Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "f7a1c9d0-1111-4a01-9b01-000000000001",
+      "name": "Schedule 09:30 Mon-Fri",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "command": "cd /d C:\\agent-os && python 05-code\\finance-agent\\finance_engine.py --today"
+      },
+      "id": "f7a1c9d0-1111-4a01-9b01-000000000002",
+      "name": "Run Finance Engine",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [220, 0],
+      "notes": "TODO: Path verify karo — project C:\\agent-os mein hona chahiye. Python installed hona chahiye."
+    },
+    {
+      "parameters": {
+        "chatId": "REPLACE_WITH_YOUR_CHAT_ID",
+        "text": "={{ $json.stdout }}",
+        "additionalFields": {}
+      },
+      "id": "f7a1c9d0-1111-4a01-9b01-000000000003",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [440, 0],
+      "notes": "TODO: 1) Telegram credential select karo  2) chatId mein apna chat ID paste karo"
+    }
+  ],
+  "connections": {
+    "Schedule 09:30 Mon-Fri": {
+      "main": [
+        [
+          {
+            "node": "Run Finance Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Finance Engine": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata"
+  },
+  "pinData": {}
+}

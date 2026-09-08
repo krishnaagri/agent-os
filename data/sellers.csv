@@ -1,0 +1,11 @@
+seller_id,name,category,rate_pct,rate_status,monthly_gmv_target,ad_budget_cap_daily,cost_sheet_updated
+S01,Aman Electronics,Electronics,5,CONFIRMED,200000,800,2026-09-08
+S02,Priya Fashion,Fashion,4,TENTATIVE,150000,500,2026-09-08
+S03,HomeWorld Decor,Home,3,CONFIRMED,100000,300,2026-09-08
+S04,GadgetZone,Electronics,4,CONFIRMED,180000,600,2026-09-08
+S05,StyleCraft,Fashion,5,CONFIRMED,90000,400,2026-09-08
+S06,Beverage Co,Grocery,3,CONFIRMED,120000,200,2026-09-08
+S07,ToyBox Kids,Toys,4,CONFIRMED,80000,250,2026-09-08
+S08,MediCare Plus,Health,4,TENTATIVE,110000,350,2026-09-08
+S09,PetPal India,Pet Care,5,CONFIRMED,70000,200,2026-09-08
+S10,BookNook,Books,3,CONFIRMED,60000,150,2026-09-08

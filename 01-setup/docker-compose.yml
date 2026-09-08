@@ -1,0 +1,45 @@
+# n8n self-hosted — Flipkart Agent OS automation engine
+# Run: docker compose up -d
+version: "3.8"
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=agent-os.local
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.agent-os.local/
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      # Flipkart API defaults (per-seller keys .env / data se aayengi)
+      - FLIPKART_API_BASE=https://api.flipkart.net/api
+      # LLM
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ../data:/home/node/.n8n/agent-data:ro
+      - ../output:/home/node/.n8n/agent-output
+
+  # Optional: PostgreSQL for n8n (bade volume ke liye, Phase 3+)
+  # db:
+  #   image: postgres:15
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: n8n
+  #     POSTGRES_USER: n8n
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD}
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+
+volumes:
+  n8n_data:
+  # pg_data:

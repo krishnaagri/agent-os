@@ -1,0 +1,13 @@
+# secrets — KABHI bhi repo mein mat push karna
+.env
+*.token
+*credentials*.json
+
+# runtime / local
+.n8n/
+node_modules/
+__pycache__/
+*.pyc
+output/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,52 @@
+# ============================================================
+# FK AGENT OS — Render Blueprint (manual fallback)
+# Normal path: keys de do, main API se khud bana deta hoon.
+# Is file ko sirf tab use karo jab manually deploy karna pade:
+#   render.com → New → Blueprint → paste yeh → Create
+# ============================================================
+services:
+  - type: web
+    name: fk-agent-os
+    runtime: docker
+    plan: free
+    region: singapore
+    autoDeploy: true
+    healthCheckPath: /healthz
+    envVars:
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: DB_TYPE
+        value: postgresdb
+      - key: DB_POSTGRESDB_HOST
+        fromDatabase:
+          name: fk-agent-os-db
+          resourceKey: host
+      - key: DB_POSTGRESDB_PORT
+        fromDatabase:
+          name: fk-agent-os-db
+          resourceKey: port
+      - key: DB_POSTGRESDB_DATABASE
+        fromDatabase:
+          name: fk-agent-os-db
+          resourceKey: database
+      - key: DB_POSTGRESDB_USER
+        fromDatabase:
+          name: fk-agent-os-db
+          resourceKey: user
+      - key: DB_POSTGRESDB_PASSWORD
+        fromDatabase:
+          name: fk-agent-os-db
+          resourceKey: password
+      - key: WEBHOOK_URL
+        value: https://fk-agent-os.onrender.com/
+      - key: N8N_HOST
+        value: fk-agent-os.onrender.com
+      - key: N8N_PROTOCOL
+        value: https
+      - key: N8N_DIAGNOSTICS_ENABLED
+        value: "false"
+
+databases:
+  - name: fk-agent-os-db
+    plan: free
+    region: singapore
