@@ -10,7 +10,7 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 
-const DATA_ROOT = '/home/node';           // N8N_USER_FOLDER value (parent)
+const DATA_ROOT = '/home/node/.n8n';      // N8N_USER_FOLDER (n8n 1.65 = exact folder)
 const LOG = '/tmp/n8n_boot.log';
 const READY = 'Editor is now accessible';
 const TIMEOUT_MS = 240000;
