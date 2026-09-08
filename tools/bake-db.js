@@ -90,11 +90,33 @@ try {
 
   console.log('[bake] n8n ready in', Math.round((Date.now() - start) / 1000), 's — shutting down');
   try { process.kill(child.pid, 'SIGTERM'); } catch (e) {}
-  sleepSync(6000);
+  sleepSync(8000);
   try { process.kill(child.pid, 'SIGKILL'); } catch (e) {}
 
-  const dbFile = findSqlite(DATA_ROOT);
-  if (!dbFile) {
+  // ── CRITICAL: remove the build-time config file ──
+  // n8n wrote /home/node/.n8n/config with a RANDOM encryption key at
+  // build time. At runtime the N8N_ENCRYPTION_KEY env var (Render)
+  // would MISMATCH it → hard crash on every boot. Deleting the config
+  // makes n8n recreate it at runtime from the real env var.
+  const cfg = DATA_ROOT + '/.n8n/config';
+  if (fs.existsSync(cfg)) { fs.unlinkSync(cfg); console.log('[bake] removed build-time config (random key) →', cfg); }
+
+  // ── Fold WAL into main DB + verify integrity ──
+  const dbFile = DATA_ROOT + '/.n8n/database.sqlite';
+  if (fs.existsSync(dbFile)) {
+    const r = require('child_process').spawnSync('python3', [
+      '-c',
+      "import sqlite3;c=sqlite3.connect('" + dbFile + "');"
+      + "print('checkpoint:', c.execute('PRAGMA wal_checkpoint(TRUNCATE)').fetchone());"
+      + "print('integrity:', c.execute('PRAGMA integrity_check').fetchone()[0]);"
+      + "c.close()",
+    ], { encoding: 'utf8' });
+    console.log(r.stdout.trim());
+    if (r.stderr) console.log(r.stderr.trim());
+  }
+
+  const finalDb = findSqlite(DATA_ROOT);
+  if (!finalDb) {
     let content = '';
     try { content = fs.readFileSync(LOG, 'utf8'); } catch (e) {}
     console.log('=== BAKE FAILED: no database.sqlite found under', DATA_ROOT, '===');
@@ -102,8 +124,8 @@ try {
     process.exit(1);
   }
 
-  const st = fs.statSync(dbFile);
-  console.log('[bake] SQLite pre-migrated at build time:', dbFile, st.size, 'bytes');
+  const st = fs.statSync(finalDb);
+  console.log('[bake] SQLite pre-migrated at build time:', finalDb, st.size, 'bytes');
   process.exit(0);
 } catch (e) {
   console.log('=== BAKE CRASH ===', e && e.stack ? e.stack : e);
