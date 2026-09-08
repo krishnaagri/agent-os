@@ -35,4 +35,6 @@ ENV TZ=Asia/Kolkata \
     NODE_OPTIONS=--max-old-space-size=300
 
 EXPOSE 8080
-CMD ["n8n", "start"]
+COPY tools/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+CMD ["/entrypoint.sh"]
