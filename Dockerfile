@@ -1,14 +1,12 @@
 # ============================================================
 # FK AGENT OS — n8n + Python finance engine (Render free tier)
-# Base: official n8n image (Node 20+) + python3 for finance engine
+# Base: official n8n image (Alpine-based, Node 20+) + python3
 # Secrets NOT in repo — credentials live inside n8n (created via API)
 # ============================================================
 FROM n8nio/n8n:latest
 
 USER root
-RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 \
- && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache python3
 
 # Project code + demo data (no secrets here)
 WORKDIR /home/node/agent-os
