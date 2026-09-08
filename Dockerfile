@@ -4,7 +4,9 @@
 # KEY TRICK: SQLite DB is pre-migrated AT BUILD TIME (via
 # tools/bake-db.js) so the service boots in seconds — the free
 # tier's 0.1 CPU + Render health check kill slow first-boot
-# migrations (infinite restart loop).
+# migrations (infinite restart loop). N8N_USER_FOLDER is set in
+# BOTH the bake and the runtime ENV so they use the same data
+# root (/home/node).
 # ============================================================
 FROM node:24-slim
 
@@ -28,6 +30,7 @@ COPY data/ ./data/
 ENV TZ=Asia/Kolkata \
     GENERIC_TIMEZONE=Asia/Kolkata \
     N8N_PORT=8080 \
+    N8N_USER_FOLDER=/home/node \
     N8N_DIAGNOSTICS_ENABLED=false \
     NODE_OPTIONS=--max-old-space-size=300
 

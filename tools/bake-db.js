@@ -1,31 +1,29 @@
 // ============================================================
 // Bake script: pre-migrate n8n's SQLite DB at Docker build time.
-// Boots n8n once, waits for "Editor is now accessible", shuts it
-// down cleanly. The resulting /home/node/.n8n/database.sqlite is
-// baked into the image → runtime boots in seconds (critical on
-// Render free tier: 0.1 CPU + health check kills slow first boot).
+// Boots n8n once, waits for ready, shuts down cleanly, then
+// DISCOVERS where n8n actually put database.sqlite (n8n 2.x
+// semantics for N8N_USER_FOLDER are not what the docs suggest),
+// and prints the path for verification. The baked /home/node
+// tree is the runtime data root (image ENV sets the same value).
 // Usage (build time only): node tools/bake-db.js
 // ============================================================
-const { spawn, spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 
-const N8N_DIR = '/home/node/.n8n';
-const DB_FILE = N8N_DIR + '/database.sqlite';
+const DATA_ROOT = '/home/node';           // N8N_USER_FOLDER value (parent)
 const LOG = '/tmp/n8n_boot.log';
 const READY = 'Editor is now accessible';
 const TIMEOUT_MS = 240000;
 
 function sleepSync(ms) {
   const end = Date.now() + ms;
-  while (Date.now() < end) { /* busy wait — fine during build */ }
+  while (Date.now() < end) {}
 }
 
 function findEntry() {
-  // Prefer the package entry directly (npm global bin symlink can be
-  // missing in container installs); fall back to the command.
   const candidates = [
     '/usr/local/lib/node_modules/n8n/bin/n8n',
-    process.env.HOME + '/lib/node_modules/n8n/bin/n8n',
+    (process.env.HOME || '/root') + '/lib/node_modules/n8n/bin/n8n',
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return { cmd: 'node', args: [c, 'start'] };
@@ -33,11 +31,32 @@ function findEntry() {
   return { cmd: 'n8n', args: ['start'] };
 }
 
+// find database.sqlite anywhere under root (maxdepth 5)
+function findSqlite(root, depth = 0) {
+  if (depth > 5) return null;
+  let entries = [];
+  try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch (e) { return null; }
+  for (const e of entries) {
+    if (e.name.startsWith('.') && e.name !== '.' && e.name !== '..') {
+      const p = root + '/' + e.name;
+      if (e.isDirectory()) {
+        const r = findSqlite(p, depth + 1);
+        if (r) return r;
+      }
+    }
+  }
+  for (const e of entries) {
+    if (e.name === 'database.sqlite') return root + '/' + e.name;
+  }
+  return null;
+}
+
 try {
-  fs.mkdirSync(N8N_DIR, { recursive: true });
-  // clean any stale db so we know state is fresh
-  for (const f of [DB_FILE, DB_FILE + '-wal', DB_FILE + '-shm']) {
-    try { fs.unlinkSync(f); } catch (e) {}
+  fs.mkdirSync(DATA_ROOT, { recursive: true });
+  // clean any stale n8n data so the bake is deterministic
+  for (const sub of ['.n8n', '.cache']) {
+    const p = DATA_ROOT + '/' + sub;
+    if (fs.existsSync(p)) fs.rmSync(p, { recursive: true, force: true });
   }
 
   const { cmd, args } = findEntry();
@@ -47,7 +66,7 @@ try {
   const child = spawn(cmd, args, {
     detached: true,
     stdio: ['ignore', logFd, logFd],
-    env: { ...process.env, N8N_USER_FOLDER: N8N_DIR },
+    env: { ...process.env, N8N_USER_FOLDER: DATA_ROOT },
   });
   child.unref();
 
@@ -60,10 +79,9 @@ try {
     sleepSync(2000);
   }
 
-  let content = '';
-  try { content = fs.readFileSync(LOG, 'utf8'); } catch (e) {}
-
   if (!ready) {
+    let content = '';
+    try { content = fs.readFileSync(LOG, 'utf8'); } catch (e) {}
     console.log('=== BAKE FAILED: n8n did not become ready in', TIMEOUT_MS / 1000, 's ===');
     console.log(content.slice(-4000));
     try { process.kill(child.pid, 'SIGKILL'); } catch (e) {}
@@ -72,17 +90,20 @@ try {
 
   console.log('[bake] n8n ready in', Math.round((Date.now() - start) / 1000), 's — shutting down');
   try { process.kill(child.pid, 'SIGTERM'); } catch (e) {}
-  sleepSync(6000); // let it flush the DB
+  sleepSync(6000);
   try { process.kill(child.pid, 'SIGKILL'); } catch (e) {}
 
-  if (!fs.existsSync(DB_FILE)) {
-    console.log('=== BAKE FAILED: no sqlite file after clean shutdown ===');
-    try { console.log('dir:', fs.readdirSync(N8N_DIR).join(', ')); } catch (e) {}
-    try { console.log(content.slice(-2000)); } catch (e) {}
+  const dbFile = findSqlite(DATA_ROOT);
+  if (!dbFile) {
+    let content = '';
+    try { content = fs.readFileSync(LOG, 'utf8'); } catch (e) {}
+    console.log('=== BAKE FAILED: no database.sqlite found under', DATA_ROOT, '===');
+    console.log(content.slice(-2000));
     process.exit(1);
   }
 
-  console.log('[bake] SQLite pre-migrated at build time:', fs.statSync(DB_FILE).size, 'bytes');
+  const st = fs.statSync(dbFile);
+  console.log('[bake] SQLite pre-migrated at build time:', dbFile, st.size, 'bytes');
   process.exit(0);
 } catch (e) {
   console.log('=== BAKE CRASH ===', e && e.stack ? e.stack : e);
