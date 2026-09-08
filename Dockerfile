@@ -4,9 +4,8 @@
 # KEY TRICK: SQLite DB is pre-migrated AT BUILD TIME so the
 # service boots in seconds (free tier 0.1 CPU + Render health
 # check would kill slow first-boot migrations, causing a loop).
-# Runtime data (owner account, workflows, credentials) lives in
-# the SQLite file; on redeploy it resets to the baked state and
-# is re-seeded via the n8n API (automation recovery).
+# NOTE: kill by PID (pkill -f would match the build shell's own
+# command line and self-terminate the step).
 # ============================================================
 FROM node:24-slim
 
@@ -21,12 +20,21 @@ RUN npm install -g n8n@latest
 # ── Pre-migrate SQLite at build time (one-time, ~1-2 min) ──
 ENV N8N_USER_FOLDER=/home/node/.n8n
 RUN mkdir -p /home/node/.n8n \
- && (n8n start > /tmp/n8n_boot.log 2>&1 &) \
- && for i in $(seq 1 90); do \
-      grep -q "Editor is now accessible" /tmp/n8n_boot.log 2>/dev/null && break; \
-      sleep 2; \
-    done \
- && pkill -f "n8n start" 2>/dev/null || true \
+ && n8n start > /tmp/n8n_boot.log 2>&1 & \
+ BOOTPID=$!; \
+ for i in $(seq 1 90); do \
+   grep -q "Editor is now accessible" /tmp/n8n_boot.log 2>/dev/null && break; \
+   sleep 2; \
+ done; \
+ if grep -q "Editor is now accessible" /tmp/n8n_boot.log 2>/dev/null; then \
+   kill $BOOTPID 2>/dev/null || true; \
+   wait $BOOTPID 2>/dev/null || true; \
+ else \
+   kill $BOOTPID 2>/dev/null || true; \
+   echo "=== BOOT FAILED — last 60 lines ==="; \
+   tail -60 /tmp/n8n_boot.log; \
+   exit 1; \
+ fi \
  && test -f /home/node/.n8n/database.sqlite \
  && echo "SQLite pre-migrated at build time"
 
