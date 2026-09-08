@@ -39,6 +39,23 @@ PY
   done
 }
 
+# ── memory monitor (diagnostic) ──
+(
+  while true; do
+    sleep 15
+    MEM=$(cat /sys/fs/cgroup/memory.current 2>/dev/null || cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null || echo 0)
+    LIM=$(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo 0)
+    echo "[mem] $(date -u +%H:%M:%S) current=$((MEM/1024/1024))MB / limit=$((LIM/1024/1024))MB"
+  done
+) &
+(
+  while true; do
+    sleep 90
+    echo "[ps] $(date -u +%H:%M:%S) top RSS:"
+    ps -eo rss,comm --sort=-rss 2>/dev/null | head -6
+  done
+) &
+
 FIRST=1
 while true; do
   if [ "$FIRST" = "1" ]; then
