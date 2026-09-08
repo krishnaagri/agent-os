@@ -5,7 +5,7 @@
 # (n8n >=1.69 always spawns main+broker+runner ≈ 700MB → OOM.)
 # SQLite DB pre-migrated at build time (tools/bake-db.js).
 # ============================================================
-FROM node:24-slim
+FROM node:22-slim
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 build-essential \
