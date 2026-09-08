@@ -1,11 +1,10 @@
 # ============================================================
 # FK AGENT OS — n8n + Python finance engine (Render free tier)
 # Base: Debian slim (apt) + Node 24 + n8n via npm + python3
-# KEY TRICK: SQLite DB is pre-migrated AT BUILD TIME so the
-# service boots in seconds (free tier 0.1 CPU + Render health
-# check would kill slow first-boot migrations, causing a loop).
-# NOTE: kill by PID (pkill -f would match the build shell's own
-# command line and self-terminate the step).
+# KEY TRICK: SQLite DB is pre-migrated AT BUILD TIME (via
+# tools/bake-db.js) so the service boots in seconds — the free
+# tier's 0.1 CPU + Render health check kill slow first-boot
+# migrations (infinite restart loop).
 # ============================================================
 FROM node:24-slim
 
@@ -17,26 +16,9 @@ RUN apt-get update \
 # n8n
 RUN npm install -g n8n@latest
 
-# ── Pre-migrate SQLite at build time (one-time, ~1-2 min) ──
-ENV N8N_USER_FOLDER=/home/node/.n8n
-RUN mkdir -p /home/node/.n8n \
- && n8n start > /tmp/n8n_boot.log 2>&1 & \
- BOOTPID=$!; \
- for i in $(seq 1 90); do \
-   grep -q "Editor is now accessible" /tmp/n8n_boot.log 2>/dev/null && break; \
-   sleep 2; \
- done; \
- if grep -q "Editor is now accessible" /tmp/n8n_boot.log 2>/dev/null; then \
-   kill $BOOTPID 2>/dev/null || true; \
-   wait $BOOTPID 2>/dev/null || true; \
- else \
-   kill $BOOTPID 2>/dev/null || true; \
-   echo "=== BOOT FAILED — last 60 lines ==="; \
-   tail -60 /tmp/n8n_boot.log; \
-   exit 1; \
- fi \
- && test -f /home/node/.n8n/database.sqlite \
- && echo "SQLite pre-migrated at build time"
+# ── Pre-migrate SQLite at build time (one-time, ~1-3 min) ──
+COPY tools/bake-db.js /tmp/bake-db.js
+RUN node /tmp/bake-db.js
 
 # Project code + demo data (no secrets here)
 WORKDIR /home/node/agent-os
