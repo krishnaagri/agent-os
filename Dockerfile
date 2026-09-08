@@ -5,7 +5,7 @@
 #  manager, so we build n8n from npm on a standard base)
 # Secrets NOT in repo — credentials live inside n8n (created via API)
 # ============================================================
-FROM node:22-slim
+FROM node:24-slim
 
 # python3 for the finance engine; build tools as fallback for native npm modules
 RUN apt-get update \
