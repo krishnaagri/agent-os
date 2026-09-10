@@ -1,0 +1,21 @@
+# FK Agent OS — GCP image (n8n 1.65.2 pinned: last single-process line that fits 1GB)
+# Re-seed capable: workflows + data baked in; credentials injected from /opt/secrets at first boot.
+FROM node:22-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 curl build-essential \
+ && rm -rf /var/lib/apt/lists/*
+RUN npm install -g n8n@1.65.2
+WORKDIR /home/node/agent-os
+COPY 05-code/ ./05-code/
+COPY data/ ./data/
+COPY gcp/entrypoint-gcp.sh /entrypoint-gcp.sh
+COPY gcp/scripts/ /entrypoint-scripts/
+RUN chmod +x /entrypoint-gcp.sh /entrypoint-scripts/*.sh
+# Re-seed assets: workflow JSONs (existing inline AI keys noted in rotation queue)
+COPY 04-n8n-workflows/wf-01-daily-webhook.json     /opt-state-workflows/
+COPY 04-n8n-workflows/wf-02-weekly-webhook.json    /opt-state-workflows/
+COPY 04-n8n-workflows/wf-03-master-map.json        /opt-state-workflows/
+COPY 04-n8n-workflows/wf-04-payments-razorpay.json /opt-state-workflows/
+ENV TZ=Asia/Kolkata GENERIC_TIMEZONE=Asia/Kolkata N8N_PORT=5678 N8N_USER_FOLDER=/home/node/.n8n N8N_DIAGNOSTICS_ENABLED=false
+EXPOSE 5678
+CMD ["/entrypoint-gcp.sh"]

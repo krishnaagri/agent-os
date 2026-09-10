@@ -1,0 +1,73 @@
+# FK Agent OS — Google Cloud e2-micro (1GB RAM + 2GB swap)
+# Lean by design: n8n does orchestration + workers + scheduler + Telegram.
+# 30 agents = LOGICAL roles in n8n (spec §32/§33), NOT 30 processes.
+services:
+  n8n:
+    build:
+      context: ..
+      dockerfile: gcp/Dockerfile.gcp
+    image: fk-n8n:${N8N_IMAGE_TAG:-prod}
+    container_name: fk-n8n
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - N8N_USER_FOLDER=/home/node/.n8n
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+      - NODE_OPTIONS=--max-old-space-size=384
+      - N8N_DIAGNOSTICS_ENABLED=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - fk_data:/home/node/agent-os/data
+      - ./state:/opt/state:ro
+      - ${SECRETS_DIR:-/opt/secrets}:/opt/secrets:ro
+    mem_limit: 640m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: fk-backend:${N8N_IMAGE_TAG:-prod}
+    container_name: fk-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=Asia/Kolkata
+      - MONGODB_URI=${MONGODB_URI:-}
+    mem_limit: 160m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health',timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: fk-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_conf:/config
+    mem_limit: 64m
+
+volumes:
+  n8n_data:
+  fk_data:
+  caddy_data:
+  caddy_conf:
