@@ -1,0 +1,30 @@
+name: mongo-probe
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: ping-atlas
+        env:
+          MURI: ${{ secrets.mongo_probe_uri }}
+        run: |
+          pip install -q pymongo
+          python3 - <<'EOF'
+          import os, pymongo
+          uri = os.environ["MURI"]
+          try:
+              c = pymongo.MongoClient(uri, serverSelectionTimeoutMS=25000)
+              c.admin.command("ping")
+              print("MONGO_PING_OK")
+              print("DBS", c.list_database_names())
+              d = c["flipkartagent"]
+              print("COLS", d.list_collection_names())
+          except Exception as e:
+              print("MONGO_PING_FAIL", str(e)[:300])
+          EOF
